@@ -140,9 +140,16 @@ def _encode_param(p: Param, value, buf: bytearray, off: int):
         size = p.elem_size
         vals = [value] if p.arraysize == 1 else list(value)
         for i, v in enumerate(vals):
-            # full-width strings are stored without a NUL terminator
             raw = str(v).encode("utf-8")[:size]
-            buf[off + i * size : off + (i + 1) * size] = raw.ljust(size, b"\x00")
+            b0 = off + i * size
+            buf[b0 : b0 + len(raw)] = raw
+            # NUL-terminate if there's room, but PRESERVE the original bytes
+            # after the terminator. Factory files leave uninitialised garbage
+            # past the NUL; zero-padding it breaks byte-exact round-trips.
+            # buf starts as the original data block, so the tail is intact.
+            # (Full-width strings fill `size` exactly and get no terminator.)
+            if len(raw) < size:
+                buf[b0 + len(raw)] = 0
         return
     size = p.elem_size
     fmt = {1: "b", 2: "h", 4: "i", 8: "q"}[size]
