@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dm3tools"
+version = "0.1.0"
+description = "Parse and write Yamaha DM3 digital mixer files (.dm3p/.dm3s/.dm3f)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Jerad Wooldridge" }]
+
+[project.scripts]
+dm3 = "dm3tools.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dm3tools"]

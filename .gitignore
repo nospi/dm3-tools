@@ -1,0 +1,9 @@
+# Yamaha-copyrighted files fetched by scripts/fetch_fixtures.sh
+fixtures/
+
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.venv/
