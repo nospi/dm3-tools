@@ -46,6 +46,8 @@ class Param:
     maximum: object = None
     default: object = None
     step: object = None
+    scaling: object = None  # raw = display * scaling; display = raw / scaling
+    unit: str | None = None
     kind: int | None = None
 
     @property
@@ -104,6 +106,8 @@ def _parse_children(elem) -> list:
                     maximum=_parse_num(child.findtext("maximum")),
                     default=child.findtext("default"),
                     step=_parse_num(child.findtext("step")),
+                    scaling=_parse_num(child.findtext("scaling")),
+                    unit=child.findtext("unit"),
                     kind=int(kind.text) if kind is not None else None,
                 )
             )

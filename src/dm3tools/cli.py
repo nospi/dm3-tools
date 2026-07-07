@@ -144,6 +144,8 @@ def _merge(a: dict, b: dict):
 def _coerce(s: str):
     if re.fullmatch(r"-?\d+", s):
         return int(s)
+    if re.fullmatch(r"-?\d+\.\d+", s):
+        return float(s)
     return s
 
 

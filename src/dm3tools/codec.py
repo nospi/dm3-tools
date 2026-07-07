@@ -95,6 +95,10 @@ def _decode_param(p: Param, buf: bytes, off: int):
     if not p.signed:
         fmt = fmt.upper()
     vals = list(struct.unpack_from(f"<{p.arraysize}{fmt}", buf, off))
+    # fixed-point: descriptor declares a scaling divisor (raw = display * scaling)
+    sc = getattr(p, "scaling", None)
+    if sc and sc != 1:
+        vals = [v / sc for v in vals]
     return vals[0] if p.arraysize == 1 else vals
 
 
@@ -145,7 +149,13 @@ def _encode_param(p: Param, value, buf: bytearray, off: int):
     if not p.signed:
         fmt = fmt.upper()
     vals = [value] if p.arraysize == 1 else list(value)
-    struct.pack_into(f"<{p.arraysize}{fmt}", buf, off, *[int(v) for v in vals])
+    # invert the fixed-point scaling; round onto the exact integer grid
+    sc = getattr(p, "scaling", None)
+    if sc and sc != 1:
+        raw = [round(v * sc) for v in vals]
+    else:
+        raw = [int(v) for v in vals]
+    struct.pack_into(f"<{p.arraysize}{fmt}", buf, off, *raw)
 
 
 def encode_children(children, values: dict, buf: bytearray, base: int):
