@@ -19,9 +19,16 @@ import re
 import sys
 from pathlib import Path
 
-from . import codec, descriptors, mbdf
+from . import codec, descriptors, dm3f as dm3f_mod, mbdf
 
 DESCRIPTOR_ENV = "DM3_DESCRIPTOR_DIR"
+DEFAULT_ENTRY = "CurrentBackupFile.bup"
+
+
+def _is_dm3f(path: str) -> bool:
+    with open(path, "rb") as fh:
+        head = fh.read(0x24)
+    return head[0x0C:0x17] == b"ProjectFile"
 
 
 def _descriptor_dir(cli_arg: str | None) -> Path:
@@ -41,10 +48,20 @@ def _descriptor_dir(cli_arg: str | None) -> Path:
     )
 
 
-def _load(path: str, ddir: Path):
+def _load(path: str, ddir: Path, entry: str | None = None):
+    """Load an MBDF file. For .dm3f project files, loads the embedded entry
+    (default: the console's current memory). Returns (mbdf, funcs, container)
+    where container is the Dm3f (or None for plain files)."""
     funcs = descriptors.load_all(ddir)
-    m = mbdf.parse_file(path)
-    return m, funcs
+    if _is_dm3f(path):
+        container = dm3f_mod.parse_file(path)
+        name = entry or DEFAULT_ENTRY
+        e = container.entry(name)
+        if e is None:
+            names = ", ".join(x.filename for x in container.entries)
+            sys.exit(f"error: no entry {name!r} in {path} (have: {names})")
+        return e.parse(), funcs, container
+    return mbdf.parse_file(path), funcs, None
 
 
 def _decode_all(m, funcs) -> dict:
@@ -134,7 +151,28 @@ def _coerce(s: str):
 
 
 def cmd_info(args):
-    m, funcs = _load(args.file, _descriptor_dir(args.descriptors))
+    ddir = _descriptor_dir(args.descriptors)
+    if _is_dm3f(args.file):
+        container = dm3f_mod.parse_file(args.file)
+        funcs = descriptors.load_all(ddir)
+        pi = container.project
+        info = codec.decode_field(
+            funcs["ProjectInfo"], pi.field_by_function("ProjectInfo")
+        )["Info"]
+        ts = info["TimeStamp"]
+        print(f"file      : {args.file}")
+        print(f"type      : ProjectFile (.dm3f show)")
+        print(
+            f"saved     : {ts['Year']:04d}-{ts['Month']:02d}-{ts['Day']:02d} "
+            f"{ts['Hour']:02d}:{ts['Minute']:02d}:{ts['Second']:02d} UTC"
+        )
+        print("entries:")
+        for e in container.entries:
+            m = e.parse()
+            fns = ",".join(x.function for x in m.fields)
+            print(f"  [{e.slot:9s}] {e.filename:42s} {len(e.payload):7d}B  {fns}")
+        return
+    m, funcs, _ = _load(args.file, ddir)
     print(f"file      : {args.file}")
     print(f"type      : {m.file_type}")
     print(f"product   : {m.product}")
@@ -153,7 +191,7 @@ def cmd_info(args):
 
 
 def cmd_dump(args):
-    m, funcs = _load(args.file, _descriptor_dir(args.descriptors))
+    m, funcs, _ = _load(args.file, _descriptor_dir(args.descriptors), args.entry)
     tree = _decode_all(m, funcs)
     if args.function:
         key = next((k for k in tree if k.split(":")[0] == args.function), None)
@@ -165,7 +203,7 @@ def cmd_dump(args):
 
 
 def cmd_get(args):
-    m, funcs = _load(args.file, _descriptor_dir(args.descriptors))
+    m, funcs, _ = _load(args.file, _descriptor_dir(args.descriptors), args.entry)
     parts = _parse_path(args.path)
     # first segment selects the field by function name (scope-qualified ok)
     fname, _ = parts[0]
@@ -177,7 +215,7 @@ def cmd_get(args):
 
 
 def cmd_set(args):
-    m, funcs = _load(args.file, _descriptor_dir(args.descriptors))
+    m, funcs, container = _load(args.file, _descriptor_dir(args.descriptors), args.entry)
     patches = {}
     for assign in args.assignments:
         if "=" not in assign:
@@ -198,14 +236,33 @@ def cmd_set(args):
         f.data = codec.encode_field(fn, f, sparse)
 
     out = args.output or args.file
-    m.save(out)
+    if container is not None:
+        # patch the modified inner file back into its entry and repack
+        name = args.entry or DEFAULT_ENTRY
+        container.entry(name).payload = m.to_bytes()
+        container.save(out)
+    else:
+        m.save(out)
     print(f"wrote {out}")
+
+
+def cmd_extract(args):
+    if not _is_dm3f(args.file):
+        sys.exit("error: extract only applies to .dm3f project files")
+    container = dm3f_mod.parse_file(args.file)
+    outdir = Path(args.dir or ".")
+    outdir.mkdir(parents=True, exist_ok=True)
+    for e in container.entries:
+        dest = outdir / e.filename
+        dest.write_bytes(e.payload)
+        print(f"  {e.filename}  ({len(e.payload)} bytes, slot {e.slot})")
+    print(f"extracted {len(container.entries)} files to {outdir}")
 
 
 def cmd_diff(args):
     ddir = _descriptor_dir(args.descriptors)
-    ma, funcs = _load(args.a, ddir)
-    mb, _ = _load(args.b, ddir)
+    ma, funcs, _ = _load(args.a, ddir, args.entry)
+    mb, _, _ = _load(args.b, ddir, args.entry)
     ta, tb = _decode_all(ma, funcs), _decode_all(mb, funcs)
 
     def walk(a, b, path):
@@ -238,24 +295,33 @@ def main(argv=None):
     p = sub.add_parser("dump", help="decode file to JSON")
     p.add_argument("file")
     p.add_argument("--function", "-f", help="only this function (e.g. Mixing)")
+    p.add_argument("--entry", "-e", help=".dm3f embedded entry (default: current memory)")
     p.set_defaults(func=cmd_dump)
 
     p = sub.add_parser("get", help="read one value by path")
     p.add_argument("file")
     p.add_argument("path", help="e.g. 'SceneInfo.Info.Title' or 'Mixing.InputChannel[0].Label.Name'")
+    p.add_argument("--entry", "-e", help=".dm3f embedded entry")
     p.set_defaults(func=cmd_get)
 
     p = sub.add_parser("set", help="set values and write the file")
     p.add_argument("file")
     p.add_argument("assignments", nargs="+", metavar="PATH=VALUE")
     p.add_argument("--output", "-o", help="write to this path instead of in place")
+    p.add_argument("--entry", "-e", help=".dm3f embedded entry")
     p.set_defaults(func=cmd_set)
 
     p = sub.add_parser("diff", help="diff two files' decoded values")
     p.add_argument("a")
     p.add_argument("b")
     p.add_argument("--function", "-f")
+    p.add_argument("--entry", "-e", help=".dm3f embedded entry")
     p.set_defaults(func=cmd_diff)
+
+    p = sub.add_parser("extract", help="extract .dm3f embedded files")
+    p.add_argument("file")
+    p.add_argument("--dir", "-d", help="output directory (default: .)")
+    p.set_defaults(func=cmd_extract)
 
     args = ap.parse_args(argv)
     args.func(args)
