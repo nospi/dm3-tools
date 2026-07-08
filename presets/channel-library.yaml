@@ -1,0 +1,151 @@
+# DM3 channel-strip starting-point library
+# =========================================
+# Sensible per-source STARTING POINTS for a small live rig, in REAL units
+# (the codec applies the descriptor's fixed-point <scaling>, so values here are
+# Hz / dB / ms / ratio exactly as shown on the desk).
+#
+# PHILOSOPHY — "disengaged but dialled-in":
+#   * HPF  : ON   — the one always-safe block; protects the PA, cleans the low end.
+#   * EQ   : ON   — gentle, corrective, cut-not-boost. This is the starting *sound*.
+#   * Gate : OFF but fully baked — flip On, then just DIAL Threshold.
+#   * Comp : OFF but fully baked — flip On, then DIAL Threshold + makeup Gain.
+#   Every block's values are ALWAYS written, so a "parked" comp/gate is ready to
+#   engage with one button. `on:` only sets the engage flag. Nothing surprises
+#   you when you bring a channel up; you dial each block in as the room needs it.
+#
+# The operator's live knobs are marked `# DIAL`. Everything else is baked.
+#
+# Desk limits (RAW range ÷ scaling = real range):
+#   hpf.freq_hz     20 – 600 Hz        (slope fixed 12 dB/oct)
+#   eq.*.type       low/high: 0=bell 1=shelf ; high also 2=LPF ; mids forced 0=bell
+#   eq.*.freq_hz    20 – 20000 Hz
+#   eq.*.gain_db    -18 .. +18
+#   eq.*.q          0.1 .. 16.0        (broad ~0.7–1.4 for corrective moves)
+#   gate/comp attack_ms   integer 0–120 ms (no sub-ms; 0 = fastest)
+#   gate.threshold_db     -72 .. 0     |  comp.threshold_db  -54 .. 0
+#   gate.range_db         down to -327 (how far the gate pulls closed signal down)
+#   gate.hold_ms  0.02–1960  gate.decay_ms 3.34–42700  comp.release_ms 8.5–42700
+#   comp.ratio      1.0 .. 25.5        comp.gain_db 0 .. 18 (makeup, + only)
+#   comp.knee       string enum (SOFT-2 is a good soft default)
+#
+# `meta` drives the exported .dm3p preset metadata (Title/Name/Category/Comment).
+
+vox:                       # SM58 hand vocal
+  meta: {title: "SM58 Lead Vocal", name: "Vox", category: "Vocal", color: "Green", icon: "DynamicMic", comment: "Starting point: SM58 lead. Dial comp thr + makeup."}
+  hpf:  {on: true, freq_hz: 110}
+  eq:
+    on: true
+    low:  {type: 0, freq_hz: 300,   gain_db: -3.0, q: 1.2}   # cut boxy mud
+    mid1: {type: 0, freq_hz: 3500,  gain_db: 2.5,  q: 1.0}   # presence / intelligibility
+    mid2: {type: 0, freq_hz: 5000,  gain_db: 0.0,  q: 1.0}   # spare (flat)
+    high: {type: 1, freq_hz: 10000, gain_db: 1.0,  q: 1.0}   # gentle air shelf
+  gate: {on: false, threshold_db: -35, range_db: -12, attack_ms: 1, hold_ms: 80, decay_ms: 150}          # threshold_db = DIAL
+  comp: {on: false, threshold_db: -18, ratio: 3.5, attack_ms: 8, release_ms: 150, gain_db: 0, knee: SOFT-2}  # threshold_db + gain_db = DIAL
+
+el_gtr:                    # SM57 on cab
+  meta: {title: "SM57 Elec Gtr Cab", name: "El Gtr", category: "Guitars", color: "Purple", icon: "GuitarAmp", comment: "SM57 on cab. Light comp baked, off."}
+  hpf:  {on: true, freq_hz: 90}
+  eq:
+    on: true
+    low:  {type: 0, freq_hz: 400,   gain_db: -3.0, q: 1.1}   # cut box
+    mid1: {type: 0, freq_hz: 3000,  gain_db: 2.0,  q: 1.0}   # bite
+    mid2: {type: 0, freq_hz: 4500,  gain_db: -2.0, q: 1.2}   # tame fizz
+    high: {type: 1, freq_hz: 10000, gain_db: 0.0,  q: 1.0}   # flat
+  gate: {on: false, threshold_db: -40, range_db: -20, attack_ms: 1, hold_ms: 60, decay_ms: 120}          # threshold_db = DIAL
+  comp: {on: false, threshold_db: -16, ratio: 2.5, attack_ms: 15, release_ms: 120, gain_db: 0, knee: SOFT-2}  # light; threshold_db + gain_db = DIAL
+
+ac_gtr:                    # acoustic DI / piezo, via volume pedal (no tone control)
+  meta: {title: "Acoustic DI Piezo", name: "Ac Gtr", category: "Guitars", color: "Purple", icon: "A.Guitar", comment: "Piezo DI. Notch kills quack. Comp baked, off."}
+  hpf:  {on: true, freq_hz: 90}
+  eq:
+    on: true
+    low:  {type: 0, freq_hz: 200,   gain_db: -3.0, q: 1.0}   # tame boom
+    mid1: {type: 0, freq_hz: 2500,  gain_db: -4.0, q: 1.4}   # kill piezo quack
+    mid2: {type: 0, freq_hz: 5000,  gain_db: 0.0,  q: 1.0}   # spare
+    high: {type: 1, freq_hz: 9000,  gain_db: 2.0,  q: 1.0}   # sparkle shelf
+  gate: {on: false, threshold_db: -45, range_db: -12, attack_ms: 2, hold_ms: 60, decay_ms: 150}          # rarely gated; parked
+  comp: {on: false, threshold_db: -18, ratio: 3.0, attack_ms: 10, release_ms: 150, gain_db: 0, knee: SOFT-2}  # threshold_db + gain_db = DIAL
+
+bass:                      # DI
+  meta: {title: "Bass DI", name: "Bass", category: "Guitars", color: "Purple", icon: "E.Bass", comment: "DI bass. Comp baked for glue, off. Dial thr + makeup."}
+  hpf:  {on: true, freq_hz: 35}
+  eq:
+    on: true
+    low:  {type: 1, freq_hz: 90,    gain_db: 2.0,  q: 0.9}   # weight (low shelf)
+    mid1: {type: 0, freq_hz: 250,   gain_db: -3.0, q: 1.1}   # de-mud
+    mid2: {type: 0, freq_hz: 800,   gain_db: 2.0,  q: 1.0}   # definition / growl
+    high: {type: 1, freq_hz: 10000, gain_db: 0.0,  q: 1.0}   # flat
+  gate: {on: false, threshold_db: -45, range_db: -20, attack_ms: 5, hold_ms: 100, decay_ms: 200}         # rarely gated; parked
+  comp: {on: false, threshold_db: -20, ratio: 4.0, attack_ms: 20, release_ms: 120, gain_db: 0, knee: SOFT-2}  # threshold_db + gain_db = DIAL
+
+kick:                      # cheap dynamic (inside)
+  meta: {title: "Kick Dynamic", name: "Kick", category: "Drums", color: "Blue", icon: "Kick", comment: "Cheap dynamic. Gate baked for tightening, off."}
+  hpf:  {on: true, freq_hz: 30}
+  eq:
+    on: true
+    low:  {type: 1, freq_hz: 65,    gain_db: 3.0,  q: 0.9}   # weight (low shelf)
+    mid1: {type: 0, freq_hz: 350,   gain_db: -4.0, q: 1.4}   # kill box
+    mid2: {type: 0, freq_hz: 3500,  gain_db: 3.0,  q: 1.0}   # beater click
+    high: {type: 1, freq_hz: 10000, gain_db: 0.0,  q: 1.0}   # flat
+  gate: {on: false, threshold_db: -30, range_db: -25, attack_ms: 0, hold_ms: 60, decay_ms: 150}          # threshold_db = DIAL
+  comp: {on: false, threshold_db: -16, ratio: 4.0, attack_ms: 20, release_ms: 120, gain_db: 0, knee: SOFT-2}  # threshold_db + gain_db = DIAL
+
+snare:                     # dynamic (top mic)
+  meta: {title: "Snare Top Dynamic", name: "Snare", category: "Drums", color: "Blue", icon: "Snare", comment: "Top mic. Gate + comp baked, off. Dial gate thr."}
+  hpf:  {on: true, freq_hz: 100}
+  eq:
+    on: true
+    low:  {type: 0, freq_hz: 150,   gain_db: 2.0,  q: 1.0}   # body
+    mid1: {type: 0, freq_hz: 500,   gain_db: -3.0, q: 1.2}   # de-box
+    mid2: {type: 0, freq_hz: 4500,  gain_db: 3.0,  q: 1.0}   # crack
+    high: {type: 1, freq_hz: 10000, gain_db: 0.0,  q: 1.0}   # flat
+  gate: {on: false, threshold_db: -30, range_db: -20, attack_ms: 0, hold_ms: 40, decay_ms: 120}          # threshold_db = DIAL
+  comp: {on: false, threshold_db: -16, ratio: 3.0, attack_ms: 10, release_ms: 100, gain_db: 0, knee: SOFT-2}  # threshold_db + gain_db = DIAL
+
+tom_rack:                  # cheap dynamic / clip-on (gate does the work)
+  meta: {title: "Rack Tom Dynamic", name: "Rack Tom", category: "Drums", color: "Blue", icon: "TomTom", comment: "Clip-on. Gate baked (fast) for spill, off."}
+  hpf:  {on: true, freq_hz: 90}
+  eq:
+    on: true
+    low:  {type: 1, freq_hz: 100,   gain_db: 2.0,  q: 0.9}   # body (low shelf)
+    mid1: {type: 0, freq_hz: 400,   gain_db: -4.0, q: 1.3}   # de-mud
+    mid2: {type: 0, freq_hz: 4000,  gain_db: 2.0,  q: 1.0}   # attack
+    high: {type: 1, freq_hz: 10000, gain_db: 0.0,  q: 1.0}   # flat
+  gate: {on: false, threshold_db: -35, range_db: -30, attack_ms: 1, hold_ms: 120, decay_ms: 250}         # threshold_db = DIAL
+  comp: {on: false, threshold_db: -14, ratio: 3.0, attack_ms: 10, release_ms: 120, gain_db: 0, knee: SOFT-2}  # baked, off
+
+tom_floor:                 # cheap dynamic / clip-on
+  meta: {title: "Floor Tom Dynamic", name: "Floor Tom", category: "Drums", color: "Blue", icon: "FloorTom", comment: "Clip-on. Gate baked (longer tail), off."}
+  hpf:  {on: true, freq_hz: 65}
+  eq:
+    on: true
+    low:  {type: 1, freq_hz: 70,    gain_db: 2.0,  q: 0.9}   # body (low shelf)
+    mid1: {type: 0, freq_hz: 400,   gain_db: -4.0, q: 1.3}   # de-mud
+    mid2: {type: 0, freq_hz: 3000,  gain_db: 2.0,  q: 1.0}   # attack
+    high: {type: 1, freq_hz: 10000, gain_db: 0.0,  q: 1.0}   # flat
+  gate: {on: false, threshold_db: -35, range_db: -30, attack_ms: 1, hold_ms: 180, decay_ms: 350}         # threshold_db = DIAL
+  comp: {on: false, threshold_db: -14, ratio: 3.0, attack_ms: 10, release_ms: 150, gain_db: 0, knee: SOFT-2}  # baked, off
+
+oh:                        # pencil condenser overheads
+  meta: {title: "OH Pencil Condenser", name: "OH", category: "Drums", color: "Blue", icon: "CondenserMic", comment: "Cheap pencils. Tames harsh cymbals. Comp gentle, off."}
+  hpf:  {on: true, freq_hz: 150}
+  eq:
+    on: true
+    low:  {type: 0, freq_hz: 150,   gain_db: 0.0,  q: 1.0}   # spare (flat; HPF handles low)
+    mid1: {type: 0, freq_hz: 400,   gain_db: -2.0, q: 1.0}   # de-mud
+    mid2: {type: 0, freq_hz: 3000,  gain_db: -2.0, q: 1.2}   # tame cheap-cymbal harsh
+    high: {type: 1, freq_hz: 11000, gain_db: 2.0,  q: 1.0}   # air shelf
+  gate: {on: false, threshold_db: -45, range_db: -12, attack_ms: 5, hold_ms: 100, decay_ms: 200}         # rarely gated; parked
+  comp: {on: false, threshold_db: -20, ratio: 2.0, attack_ms: 20, release_ms: 200, gain_db: 0, knee: SOFT-2}  # gentle; threshold_db + gain_db = DIAL
+
+perc_clip:                 # small dynamic clip-on (generic percussion)
+  meta: {title: "Perc Clip-On", name: "Perc", category: "Drums", color: "Blue", icon: "Perc.", comment: "Generic clip-on percussion. Gate baked, off."}
+  hpf:  {on: true, freq_hz: 120}
+  eq:
+    on: true
+    low:  {type: 0, freq_hz: 300,   gain_db: 0.0,  q: 1.0}   # spare (flat)
+    mid1: {type: 0, freq_hz: 400,   gain_db: -3.0, q: 1.1}   # de-mud
+    mid2: {type: 0, freq_hz: 5000,  gain_db: 2.0,  q: 1.0}   # presence / attack
+    high: {type: 1, freq_hz: 10000, gain_db: 0.0,  q: 1.0}   # flat
+  gate: {on: false, threshold_db: -38, range_db: -25, attack_ms: 1, hold_ms: 60, decay_ms: 120}          # threshold_db = DIAL
+  comp: {on: false, threshold_db: -16, ratio: 2.5, attack_ms: 10, release_ms: 120, gain_db: 0, knee: SOFT-2}  # baked, off

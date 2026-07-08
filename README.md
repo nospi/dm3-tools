@@ -34,6 +34,29 @@ dm3 extract show.dm3f -d out/                 # unpack all embedded files
 Only the bytes for values you set are touched; everything else in the file is
 preserved byte-for-byte.
 
+## Channel-preset library
+
+`presets/channel-library.yaml` holds per-source channel-strip starting points
+(vox, kick, snare, toms, OH, bass, elec/acoustic gtr, perc) in **real units** —
+Hz / dB / ms / ratio, exactly as the desk shows them. The design is
+_"disengaged but dialled-in"_: HPF + EQ on (gentle, corrective), Gate + Comp
+**baked but off** — the operator flips a block on and dials only Threshold (+
+makeup Gain). Edit values in the YAML, not the code.
+
+```bash
+# stamp strips onto an existing scene/show (1-based channels, as on the desk)
+scripts/apply_presets.py show.dm3f --map "1=kick,2=snare,9=bass,14=vox"
+scripts/apply_presets.py show.dm3f -e SCENE.dm3s --map "…"   # into a stored scene
+scripts/apply_presets.py --list
+
+# emit standalone .dm3p channel presets (one per source, unique UUIDs) to recall
+# on the desk / in DM3 Editor. Clones a factory CH template; not redistributed.
+scripts/generate_presets.py            # -> presets/dm3p/*.dm3p
+```
+
+Only the strip fields (PEQ/Gate/Comp) are written; patch, label, faders and
+sends are byte-preserved.
+
 ## How it works
 
 DM3 files are `#YAMAHA MBDF` containers: a header + UUID, then `#MMS FIELD`

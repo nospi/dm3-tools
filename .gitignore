@@ -7,3 +7,6 @@ __pycache__/
 dist/
 build/
 .venv/
+
+# generated channel presets are byte-clones of a factory template (Yamaha-derived)
+presets/dm3p/
