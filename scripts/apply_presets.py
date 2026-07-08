@@ -103,7 +103,7 @@ def build_strip(preset: dict) -> dict:
     """
     h = preset["hpf"]
     eq = preset["eq"]
-    return {
+    strip = {
         "PEQ": {
             "On": 1 if eq.get("on", True) else 0,
             "Bank": {
@@ -127,6 +127,11 @@ def build_strip(preset: dict) -> dict:
             "Bank": {"Compressor": _comp(preset["comp"])},
         },
     }
+    # polarity flip (e.g. under-snare mic): only touch Input.Phase when the
+    # preset declares it, so channels that don't care are left byte-untouched.
+    if "phase" in preset:
+        strip["Input"] = {"Phase": 1 if preset["phase"] else 0}
+    return strip
 
 
 def parse_map(spec: str) -> dict[int, str]:

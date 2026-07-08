@@ -102,6 +102,19 @@ snare:                     # dynamic (top mic)
   gate: {on: false, threshold_db: -30, range_db: -20, attack_ms: 0, hold_ms: 40, decay_ms: 120}          # threshold_db = DIAL
   comp: {on: false, threshold_db: -16, ratio: 3.0, attack_ms: 10, release_ms: 100, gain_db: 0, knee: SOFT-2}  # threshold_db + gain_db = DIAL
 
+snare_bottom:              # dynamic under the snare — wires/sizzle, NOT crack
+  meta: {title: "Snare Bottom Dynamic", name: "Snare-", category: "Drums", color: "Blue", icon: "Snare", comment: "Under-snare mic. Polarity FLIPPED vs top. High sizzle, no crack boost."}
+  phase: true              # flip polarity — bottom mic is ~180 out with the top
+  hpf:  {on: true, freq_hz: 150}                              # roll off shell boom + kick/tom bleed
+  eq:
+    on: true
+    low:  {type: 0, freq_hz: 200,   gain_db: -4.0, q: 1.0}   # cut bleed / mud
+    mid1: {type: 0, freq_hz: 500,   gain_db: -3.0, q: 1.2}   # de-box
+    mid2: {type: 0, freq_hz: 1000,  gain_db: 0.0,  q: 1.0}   # spare (flat)
+    high: {type: 1, freq_hz: 9000,  gain_db: 3.0,  q: 1.0}   # wire sizzle / snap
+  gate: {on: false, threshold_db: -30, range_db: -20, attack_ms: 0, hold_ms: 40, decay_ms: 120}          # usually linked to top; parked
+  comp: {on: false, threshold_db: -18, ratio: 2.5, attack_ms: 10, release_ms: 100, gain_db: 0, knee: SOFT-2}  # gentle; baked, off
+
 tom_rack:                  # cheap dynamic / clip-on (gate does the work)
   meta: {title: "Rack Tom Dynamic", name: "Rack Tom", category: "Drums", color: "Blue", icon: "TomTom", comment: "Clip-on. Gate baked (fast) for spill, off."}
   hpf:  {on: true, freq_hz: 90}
