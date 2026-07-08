@@ -103,7 +103,7 @@ snare:                     # dynamic (top mic)
   comp: {on: false, threshold_db: -16, ratio: 3.0, attack_ms: 10, release_ms: 100, gain_db: 0, knee: SOFT-2}  # threshold_db + gain_db = DIAL
 
 snare_bottom:              # dynamic under the snare — wires/sizzle, NOT crack
-  meta: {title: "Snare Bottom Dynamic", name: "Snare-", category: "Drums", color: "Blue", icon: "Snare", comment: "Under-snare mic. Polarity FLIPPED vs top. High sizzle, no crack boost."}
+  meta: {title: "Snare Bottom Dynamic", name: "Snare-", category: "Drums", color: "Blue", icon: "Snare", comment: "Under-snare mic. Polarity FLIPPED vs top. High sizzle, no crack boost. On desk: CH LINK DYN1 only to snare top."}
   phase: true              # flip polarity — bottom mic is ~180 out with the top
   hpf:  {on: true, freq_hz: 150}                              # roll off shell boom + kick/tom bleed
   eq:
